@@ -1,131 +1,163 @@
-//Joystick analog to 4 bit encoder code
-//(Transmitter Code)
-//8th March, 2023
-//The goal is to write code that would take the analog inputs of both the coordinates of two joystick and convert it into a 4-bit signal. 
-//One joystick would control the forward and the backward motion, that is four center wheels and the other would control whether or not to
-//rotate the back and front servos.
+//Receiver Decoder. Input 4-bit signal to motoR control
+//(Receiver Code)
+//15th March, 2023
+//The goal is to write code that would control the 4 motors based on the command received
+//The four motors are DC motors
 
-/*Macros to define joystick inputs
-//First Joystick (Only Y would be used)#redundancy but easier to control with this control design
-#define JS1X A0 //First Joystick X-Coordinate
-#define JS1Y A1 //First Joystick Y-Coordinate
+//Pins for DC motors
+//Left Side (Viewing from back)
+int dcm_pin1 = 3;
+int dcm_pin2 = 4;
+//Right Side
+int dcm_pin3 = 5;
+int dcm_pin4 = 6;
 
-//Second Joystick (Only X would be used)
-#define JS2X A2 //Second Joystick X-Coordinate
-#define JS2Y A3 //Second Joystick Y-Coordinate
-*/
+//Defining pins for input signals from receiver
+int in1 = 8;
+int in2 = 9;
+int in3 = 10;
+int in4 = 11;
 
-//rules
-/** LSB->FWD(0)/BKW(1), LSB + 1-> Motion(1)/No-Motion(0), LSB + 2-> Left Turning(0)/Right Turning(1), LSB + 3-> Turning(1)/No-Turning(0)
- * Don't-care states are treated as 0
- * Nothing: 0000
- * FWD No-Turning: 0010
- * BKW No-Turning: 0011
- * FWD Turning Left: 1010
- * FWD Turning Right: 1110
- * BKW Turning Left: 1011
- * BKW Turning Right: 1111
- * Turning Left No Motion: 1000
- * Turning Right No Motion: 1100
- * **/
-
-//Global center value holding identifiers
-float JS1Y_init_val;
-float JS2X_init_val;
-
-//Global Variables holding pin numbers of output signals
-int out1 = 5;
-int out2 = 6;
-int out3 = 7;
-int out4 = 8;
-
-//Global Variables holding bit values of output signals (4-bit) (zero or one)
-int aus1;
-int aus2;
-int aus3;
-int aus4;
-
-//Global buffer value, after which the signal should be high
-float buff = 100;
-
-//Normalised Values of Joystick inputs
-float nor_JS1Y;
-float nor_JS2X;
+//Defining the input signals from receiver
+int data1;
+int data2;
+int data3;
+int data4;
 
 //driver code
 void setup() {
-  //initialise the pins of Joystick as inputs
-  pinMode(A0, INPUT);
-  pinMode(A1, INPUT);
-  pinMode(A2, INPUT);
-  pinMode(A3, INPUT);
+  //The input pins should ben defined as input
+  pinMode(in1, INPUT);
+  pinMode(in2, INPUT);
+  pinMode(in3, INPUT);
+  pinMode(in4, INPUT);
 
-  //Initialise output pins
-  pinMode(out1, OUTPUT);
-  pinMode(out2, OUTPUT);
-  pinMode(out3, OUTPUT);
-  pinMode(out4, OUTPUT);
-  
-  //initialise the center-most values of the joystick. This code assumes that the joysticks were not pulled during initialisation.
-  //Initialisation happens everytime Arduino is reset.
-  JS1Y_init_val = analogRead(A0);
-  JS2X_init_val = analogRead(A2);
+  //The output pins for DC motors
+  pinMode(dcm_pin1, OUTPUT);
+  pinMode(dcm_pin2, OUTPUT);
+  pinMode(dcm_pin3, OUTPUT);
+  pinMode(dcm_pin4, OUTPUT);
 
-  //Serial.begin()
+  //also stop all DC motors
+  digitalWrite(dcm_pin1, LOW);
+  digitalWrite(dcm_pin2, LOW);
+  digitalWrite(dcm_pin3, LOW);
+  digitalWrite(dcm_pin4, LOW);
+
   Serial.begin(9600);
 }
 
 void loop() {
-  //Serial.println(analogRead(A0) - JS1Y_init_val);
-  //normalized values of joystick inputs
-  nor_JS1Y = analogRead(A0) - JS1Y_init_val;
-  nor_JS2X = analogRead(A2) - JS2X_init_val;
-
-  //default setting
-  aus1 = 0;
-  aus2 = 0;
-  aus3 = 0;
-  aus4 = 0;
+  //reading the received signal as input
+  data1 = digitalRead(in1);
+  data2 = digitalRead(in2);
+  data3 = digitalRead(in3);
+  data4 = digitalRead(in4);
   
-  //LSB + 1 (Motion or No-Motion Handling)
-  if(abs(nor_JS1Y) >= buff)
-  {
-    aus2 = 1;
-  } else{ //no motion
-    aus2 = 0;
-    aus1 = 0; //It is actually a don't-care state, so used 0 as a convention
-  }
-
-  //LSB + 3 (Turning or No-Turning Handling)
-  if(abs(nor_JS2X) >= buff)
-  {
-    aus4 = 1;
-  } else{ //no motion
-    aus4 = 0;
-    aus3 = 0; //It is actually a don't-care state, so used 0 as a convention
-  }
-
-  if(nor_JS1Y >= buff){
-    aus1 = 0; //FWD
-  } else if(nor_JS1Y <= -buff){
-    aus1 = 1; //BWD
-  }
+  //handling FWD/BKW no turning scenarios
+  //Putting this first means that FWD/BKW is being prioritised first.
   
-  if(nor_JS2X >= buff){
-    aus3 = 0; //Left
-  } else if(nor_JS2X <= -buff){
-    aus3 = 1; //Right
-  }
-  
-  //writing them
-  digitalWrite(out1, aus1);
-  digitalWrite(out2, aus2);
-  digitalWrite(out3, aus3);
-  digitalWrite(out4, aus4);
+  //if only fwd/bwd
+  if(data2 == 1 && data4 == 0){
+    //if forward
+    if(data1 == 0){
+      //left side
+      digitalWrite(dcm_pin1, HIGH);
+      digitalWrite(dcm_pin2, LOW);
 
-  Serial.print(aus4);
-  Serial.print(aus3);
-  Serial.print(aus2);
-  Serial.print(aus1);
-  Serial.println();
+      //right side
+      digitalWrite(dcm_pin3, HIGH);
+      digitalWrite(dcm_pin4, LOW);
+    }
+    else if(data2 == 1){
+      //left side
+      digitalWrite(dcm_pin1, LOW);
+      digitalWrite(dcm_pin2, HIGH);
+
+      //right side
+      digitalWrite(dcm_pin3, LOW);
+      digitalWrite(dcm_pin4, HIGH);
+    }
+  }
+  //if only left/right
+  else if(data4 == 1 && data2 == 0){
+    //if only left
+    if(data3 == 0){
+      //left side (backward)
+      digitalWrite(dcm_pin1, LOW);
+      digitalWrite(dcm_pin2, HIGH);
+
+      //right side (forward)
+      digitalWrite(dcm_pin3, HIGH);
+      digitalWrite(dcm_pin4, LOW);
+    } 
+    //if only right
+    else if(data3 == 1){
+      //left side (forward)
+      digitalWrite(dcm_pin1, HIGH);
+      digitalWrite(dcm_pin2, LOW);
+
+      //right side (backward)
+      digitalWrite(dcm_pin3, LOW);
+      digitalWrite(dcm_pin4, HIGH);
+    }
+  }
+  //if a combination of left and right
+  else if(data2 == 1 && data4 == 1){
+    //forward and left
+    if(data1 == 0 && data3 == 0){
+      //left side (stop)
+      digitalWrite(dcm_pin1, LOW);
+      digitalWrite(dcm_pin2, LOW);
+
+      //right side (forward)
+      digitalWrite(dcm_pin3, HIGH);
+      digitalWrite(dcm_pin4, LOW);
+    }
+    //forward and right
+    else if(data1 == 0 && data3 == 1){
+      //left side (forward)
+      digitalWrite(dcm_pin1, HIGH);
+      digitalWrite(dcm_pin2, LOW);
+
+      //right side (stop)
+      digitalWrite(dcm_pin3, LOW);
+      digitalWrite(dcm_pin4, LOW);
+    }
+    //backward and left
+    else if(data1 == 1 && data3 == 0){
+      //left side (stop)
+      digitalWrite(dcm_pin1, LOW);
+      digitalWrite(dcm_pin2, LOW);
+
+      //right side (backward)
+      digitalWrite(dcm_pin3, LOW);
+      digitalWrite(dcm_pin4, HIGH);
+    }
+    //backward and right
+    else if(data1 == 1 && data3 == 1){
+      //left side (backward)
+      digitalWrite(dcm_pin1, LOW);
+      digitalWrite(dcm_pin2, HIGH);
+
+      //right side (stop)
+      digitalWrite(dcm_pin3, LOW);
+      digitalWrite(dcm_pin4, LOW);
+    }
+  }
+  else{
+       //left side (stop)
+      digitalWrite(dcm_pin1, LOW);
+      digitalWrite(dcm_pin2, LOW);
+
+      //right side (stop)
+      digitalWrite(dcm_pin3, LOW);
+      digitalWrite(dcm_pin4, LOW);
+  }
+
+  //printing the received values
+  Serial.print(data4);
+  Serial.print(data3);
+  Serial.print(data2);
+  Serial.println(data1);
 }
