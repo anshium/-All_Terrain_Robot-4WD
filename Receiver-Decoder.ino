@@ -145,6 +145,15 @@ void loop() {
       digitalWrite(dcm_pin4, LOW);
     }
   }
+  else{
+       //left side (stop)
+      digitalWrite(dcm_pin1, LOW);
+      digitalWrite(dcm_pin2, LOW);
+
+      //right side (stop)
+      digitalWrite(dcm_pin3, LOW);
+      digitalWrite(dcm_pin4, LOW);
+  }
 
   //printing the received values
   Serial.print(data4);
