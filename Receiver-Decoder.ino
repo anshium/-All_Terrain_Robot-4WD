@@ -1,9 +1,8 @@
 //Receiver Decoder. Input 4-bit signal to moto control
 //(Receiver Code)
-//8th March, 2023
-//The goal is to write code that would control the 8 motors based on the command received
-//The 8 motors consist of 6 DC motors that would be affected only by forward or backward commands.
-//The remaining two servos would rotate depending on the input signal received.
+//15th March, 2023
+//The goal is to write code that would control the 4 motors based on the command received
+//The four motors are DC motors
 
 //Pins for DC motors
 //Left Side (Viewing from back)
