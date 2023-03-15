@@ -5,27 +5,13 @@
 //The 8 motors consist of 6 DC motors that would be affected only by forward or backward commands.
 //The remaining two servos would rotate depending on the input signal received.
 
-//Including the Servo library
-#include <Servo.h>
-
-//Defining servo objects
-Servo forward_servo;
-Servo backward_servo;
-
-//Servo default position (degrees)
-float servo_default_angle = 90;
-
-//Maximum and minimum angle servos can rotate (degrees)
-int max_servo_angle = 145;
-int min_servo_angle = 180 - max_servo_angle;
-
-//current angle of servo motors
-float forward_servo_angle = 90;
-float backward_servo_angle = 90;
-
 //Pins for DC motors
+//Left Side (Viewing from back)
 int dcm_pin1 = 3;
 int dcm_pin2 = 4;
+//Right Side
+int dcm_pin3 = 5;
+int dcm_pin4 = 6;
 
 //Defining pins for input signals from receiver
 int in1 = 8;
@@ -39,9 +25,6 @@ int data2;
 int data3;
 int data4;
 
-//time
-int t = 0;
-int t_scaled;
 //driver code
 void setup() {
   //The input pins should ben defined as input
@@ -49,22 +32,18 @@ void setup() {
   pinMode(in2, INPUT);
   pinMode(in3, INPUT);
   pinMode(in4, INPUT);
-  
-  //Servos to be attached to two pwm pins
-  forward_servo.attach(5);
-  backward_servo.attach(6);
 
   //The output pins for DC motors
   pinMode(dcm_pin1, OUTPUT);
   pinMode(dcm_pin2, OUTPUT);
-  
-  //On start or reset, set the Servo motors to default position
-  forward_servo.write(servo_default_angle);
-  backward_servo.write(servo_default_angle);
+  pinMode(dcm_pin3, OUTPUT);
+  pinMode(dcm_pin4, OUTPUT);
 
   //also stop all DC motors
   digitalWrite(dcm_pin1, LOW);
   digitalWrite(dcm_pin2, LOW);
+  digitalWrite(dcm_pin3, LOW);
+  digitalWrite(dcm_pin4, LOW);
 
   Serial.begin(9600);
 }
@@ -75,56 +54,96 @@ void loop() {
   data2 = digitalRead(in2);
   data3 = digitalRead(in3);
   data4 = digitalRead(in4);
-
-  if(data1 == 0 && data2 == 0 && data3 == 0 && data4 == 0){
-    //put all 6 DC motos to rest
-    //On start or reset, set the Servo motors to default position
-    digitalWrite(dcm_pin1, LOW);
-    digitalWrite(dcm_pin2, LOW);
-  } else{
-    //first giving commands to the 6 motors
-    if(data2 == 1){ //if motion
-      if(data1 == 0){
-        //forward
-        digitalWrite(dcm_pin1, HIGH);
-        digitalWrite(dcm_pin2, LOW);
-      } else if(data1 == 1){
-        //backward
-        digitalWrite(dcm_pin1, LOW);
-        digitalWrite(dcm_pin2, HIGH);
-      }
-    } else{ //else shut these motors off
-      digitalWrite(dcm_pin1, LOW);
+  
+  //handling FWD/BKW no turning scenarios
+  //Putting this first means that FWD/BKW is being prioritised first.
+  
+  //if only fwd/bwd
+  if(data2 == 1 && data4 == 0){
+    //if forward
+    if(data1 == 0){
+      //left side
+      digitalWrite(dcm_pin1, HIGH);
       digitalWrite(dcm_pin2, LOW);
-    }
 
-    //now for turning commands
-    if(data4 == 1){
-      if(data3 == 0){
-        //left
-        if((servo_default_angle + t_scaled <= max_servo_angle) && (servo_default_angle - t_scaled >= min_servo_angle)){
-          forward_servo.write(servo_default_angle + t_scaled);
-          backward_servo.write(servo_default_angle - t_scaled);
-        }
-      } else if(data4 == 1){
-        //right
-        if((servo_default_angle + t_scaled <= max_servo_angle) && (servo_default_angle - t_scaled >= min_servo_angle)){
-          forward_servo.write(servo_default_angle - t_scaled);
-          backward_servo.write(servo_default_angle + t_scaled);
-        }
-      }
-    } else{
-      //else just relax B)
+      //right side
+      digitalWrite(dcm_pin3, HIGH);
+      digitalWrite(dcm_pin4, LOW);
+    }
+    else if(data2 == 1){
+      //left side
+      digitalWrite(dcm_pin1, LOW);
+      digitalWrite(dcm_pin2, HIGH);
+
+      //right side
+      digitalWrite(dcm_pin3, LOW);
+      digitalWrite(dcm_pin4, HIGH);
     }
   }
+  //if only left/right
+  else if(data4 == 1 && data2 == 0){
+    //if only left
+    if(data3 == 0){
+      //left side (backward)
+      digitalWrite(dcm_pin1, LOW);
+      digitalWrite(dcm_pin2, HIGH);
 
-  //serial monitor print
-  Serial.print(data4);
-  Serial.print(data3);
-  Serial.print(data2);
-  Serial.print(data1);
-  Serial.println();
-  
-  t++;
-  t_scaled = t/60;
+      //right side (forward)
+      digitalWrite(dcm_pin3, HIGH);
+      digitalWrite(dcm_pin4, LOW);
+    } 
+    //if only right
+    else if(data3 == 1){
+      //left side (forward)
+      digitalWrite(dcm_pin1, HIGH);
+      digitalWrite(dcm_pin2, LOW);
+
+      //right side (backward)
+      digitalWrite(dcm_pin3, LOW);
+      digitalWrite(dcm_pin4, HIGH);
+    }
+  }
+  //if a combination of left and right
+  else if(data2 == 1 && data4 == 1){
+    //forward and left
+    if(data1 == 0 && data3 == 0){
+      //left side (stop)
+      digitalWrite(dcm_pin1, LOW);
+      digitalWrite(dcm_pin2, LOW);
+
+      //right side (forward)
+      digitalWrite(dcm_pin3, HIGH);
+      digitalWrite(dcm_pin4, LOW);
+    }
+    //forward and right
+    else if(data1 == 0 && data3 == 1){
+      //left side (forward)
+      digitalWrite(dcm_pin1, HIGH);
+      digitalWrite(dcm_pin2, LOW);
+
+      //right side (stop)
+      digitalWrite(dcm_pin3, LOW);
+      digitalWrite(dcm_pin4, LOW);
+    }
+    //backward and left
+    else if(data2 == 1 && data4 == 0){
+      //left side (stop)
+      digitalWrite(dcm_pin1, LOW);
+      digitalWrite(dcm_pin2, LOW);
+
+      //right side (backward)
+      digitalWrite(dcm_pin3, LOW);
+      digitalWrite(dcm_pin4, HIGH);
+    }
+    //backward and right
+    else if(data2 == 1 && data4 == 1){
+      //left side (backward)
+      digitalWrite(dcm_pin1, LOW);
+      digitalWrite(dcm_pin2, HIGH);
+
+      //right side (stop)
+      digitalWrite(dcm_pin3, LOW);
+      digitalWrite(dcm_pin4, LOW);
+    }
+  }
 }
