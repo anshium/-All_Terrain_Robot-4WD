@@ -1,4 +1,4 @@
-//Receiver Decoder. Input 4-bit signal to moto control
+//Receiver Decoder. Input 4-bit signal to motoR control
 //(Receiver Code)
 //15th March, 2023
 //The goal is to write code that would control the 4 motors based on the command received
@@ -145,4 +145,10 @@ void loop() {
       digitalWrite(dcm_pin4, LOW);
     }
   }
+
+  //printing the received values
+  Serial.print(data4);
+  Serial.print(data3);
+  Serial.print(data2);
+  Serial.println(data1);
 }
